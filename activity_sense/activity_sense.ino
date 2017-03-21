@@ -1,11 +1,16 @@
 /*
-  This is an example program writen for the Seeeduino Stalker v2.3 and
-  uses the Multitech mDOT LoRa module running the Australian compatable AT
-  enabled firmware.
-
-  This program,
-    Joins the LoRa Network
-    Sends loop count
+ * 21 Mar 17 - Dane Lennon
+ * 
+ * This is a script writen for the Arduino Uno for the CSA Student Day and
+ * uses the Multitech mDOT LoRa module running the Australian compatable AT
+ * enabled firmware.
+ * 
+ * This program,
+ *  Joins the LoRa Network
+ *  Waits for motion to be sensed 
+ *  Sends the following fields: 
+ *    - alert: 1/0 
+ *    - count: # of ticks since last reboot 
 */
 
 /*--------------------------------------------------------------------------------------
@@ -39,11 +44,11 @@ void setup() {
   --------------------------------------------------------------------------------------*/
 int loopNum = 0;
 void loop() {
-  int responseCode;                              //Response code from the mdot
+  //int responseCode;                              //Response code from the mdot
 
   char cmd[4];                                  //cmd = {'L', ':', '#', '#'}
   sprintf(cmd,"Loop:%d",loopNum);
-  responseCode = mdot.sendPairs(cmd);
+  mdot.sendPairs(cmd);
 
   delay(5000);
   loopNum++;

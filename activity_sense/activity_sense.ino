@@ -22,6 +22,7 @@
   Definitions
   --------------------------------------------------------------------------------------*/
 LoRaAT mdot;                                     //Instantiate a LoRaAT object
+int pir_pin = 2;                                 //attach the OUT pin of the PIR to pin 2 on the Uno
 
 /*--- setup() --------------------------------------------------------------------------
   Called by the Arduino framework once, before the main loop begins.
@@ -30,6 +31,9 @@ LoRaAT mdot;                                     //Instantiate a LoRaAT object
    - Opens serial communication with MDOT
   --------------------------------------------------------------------------------------*/
 void setup() {
+
+  attachInterrupt(digitalPinToInterrupt(pir_pin), updateCount, FALLING);
+  
   int responseCode;                              //Response of mDot commands
   mdot.begin();                                  //Opens serial comms with MDOT
 
@@ -42,14 +46,22 @@ void setup() {
 /*--- loop() ---------------------------------------------------------------------------
   Main loop called by the Arduino framework
   --------------------------------------------------------------------------------------*/
-int loopNum = 0;
+int alert = 0;
+int count = 0; 
 void loop() {
   //int responseCode;                              //Response code from the mdot
 
-  char cmd[4];                                  //cmd = {'L', ':', '#', '#'}
-  sprintf(cmd,"Loop:%d",loopNum);
-  mdot.sendPairs(cmd);
+  char msg[15];                                  //cmd = {'a', 'l', 'e', 'r', 't', ':', '#', ',', 
+                                                 //       'c', 'o', 'u', 'n', 't', ':', '#', '#', '#'}
+  sprintf(msg,"alert:%d,count:%d",alert,count);
+  mdot.sendPairs(msg);
 
   delay(5000);
-  loopNum++;
+  alert = 0; 
 }
+
+void updateCount(){
+  alert = 1; 
+  ++count; 
+}
+

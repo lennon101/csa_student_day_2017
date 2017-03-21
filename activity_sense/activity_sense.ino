@@ -49,16 +49,19 @@ void setup() {
   --------------------------------------------------------------------------------------*/
 int alert = 0;
 int count = 0; 
+int prevCount = 0; 
 void loop() {
   //int responseCode;                              //Response code from the mdot
 
   char msg[15];                                  //cmd = {'a', 'l', 'e', 'r', 't', ':', '#', ',', 
                                                  //       'c', 'o', 'u', 'n', 't', ':', '#', '#', '#'}
-  sprintf(msg,"alert:%d,count:%d",alert,count);
-  mdot.sendPairs(msg); 
-  alert = 0; 
-  
-  delay(10000);
+  if (count != prevCount){ 
+    sprintf(msg,"alert:%d,count:%d",alert,count);
+    mdot.sendPairs(msg); 
+    prevCount = count; 
+    alert = 0;
+  }
+  delay(5000);
 }
 
 void updateCount(){

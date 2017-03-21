@@ -16,13 +16,13 @@
 /*--------------------------------------------------------------------------------------
   Includes
   --------------------------------------------------------------------------------------*/
-#include <LoRaAT.h>                              //Include LoRa AT libraray
+#include <LoRaAT.h>                               //Include LoRa AT libraray
 
 /*--------------------------------------------------------------------------------------
   Definitions
   --------------------------------------------------------------------------------------*/
-LoRaAT mdot;                                     //Instantiate a LoRaAT object
-int pir_pin = 2;                                 //attach the OUT pin of the PIR to pin 2 on the Uno
+//LoRaAT mdot;                                     //Instantiate a LoRaAT object
+const byte interruptPin = 2;                       //set pin 2 for the pir sensor
 
 /*--- setup() --------------------------------------------------------------------------
   Called by the Arduino framework once, before the main loop begins.
@@ -31,16 +31,12 @@ int pir_pin = 2;                                 //attach the OUT pin of the PIR
    - Opens serial communication with MDOT
   --------------------------------------------------------------------------------------*/
 void setup() {
-
-  attachInterrupt(digitalPinToInterrupt(pir_pin), updateCount, FALLING);
+  pinMode(interruptPin, INPUT_PULLUP);            //attach the OUT pin of the PIR to pin 2 on the Uno
   
   int responseCode;                              //Response of mDot commands
-  mdot.begin();                                  //Opens serial comms with MDOT
 
-  do {
-    responseCode = mdot.join();
-    delay(10000);
-  } while (responseCode != 0);
+  Serial.begin(9600); 
+  attachInterrupt(digitalPinToInterrupt(interruptPin), updateCount, FALLING);
 }
 
 /*--- loop() ---------------------------------------------------------------------------
@@ -54,14 +50,16 @@ void loop() {
   char msg[15];                                  //cmd = {'a', 'l', 'e', 'r', 't', ':', '#', ',', 
                                                  //       'c', 'o', 'u', 'n', 't', ':', '#', '#', '#'}
   sprintf(msg,"alert:%d,count:%d",alert,count);
-  mdot.sendPairs(msg);
-
-  delay(5000);
+  Serial.println(msg); 
   alert = 0; 
+  
+  delay(5000);
+  
 }
 
 void updateCount(){
   alert = 1; 
   ++count; 
+  Serial.println("updateCount called"); 
 }
 

@@ -31,13 +31,12 @@ int interruptPin = 2;                                 //attach the OUT pin of th
    - Opens serial communication with MDOT
   --------------------------------------------------------------------------------------*/
 void setup() {
-  pinMode(interruptPin, INPUT_PULLUP); 
+  pinMode(interruptPin, INPUT); 
 
-  attachInterrupt(digitalPinToInterrupt(interruptPin), updateCount, FALLING);
+  attachInterrupt(digitalPinToInterrupt(interruptPin), updateCount, RISING);
   
   int responseCode;                              //Response of mDot commands
   mdot.begin();                                  //Opens serial comms with MDOT
-
   do {
     responseCode = mdot.join();
     delay(10000);
@@ -58,10 +57,11 @@ void loop() {
   if (count != prevCount){ 
     sprintf(msg,"alert:%d,count:%d",alert,count);
     mdot.sendPairs(msg); 
+    delay(5000); 
     prevCount = count; 
     alert = 0;
   }
-  delay(5000);
+  delay(1000);
 }
 
 void updateCount(){

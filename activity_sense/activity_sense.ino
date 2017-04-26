@@ -1,28 +1,48 @@
 /*
- * 21 Mar 17 - Dane Lennon
- * 
- * This is a script writen for the Arduino Uno for the CSA Student Day and
- * uses the Multitech mDOT LoRa module running the Australian compatable AT
- * enabled firmware.
- * 
- * This program,
- *  Joins the LoRa Network
- *  Waits for motion to be sensed 
- *  Sends the following fields: 
- *    - alert: 1/0 
- *    - count: # of ticks since last reboot 
+   21 Mar 17 - Dane Lennon
+
+   This is a script writen for the Arduino Uno for the CSA Student Day and
+   uses the Multitech mDOT LoRa module running the Australian compatable AT
+   enabled firmware.
+
+   Includes:
+    - Altoview mDOT: https://github.com/Altoview/Altoview_MDot
+    - AltSoftSerial: https://www.pjrc.com/teensy/td_libs_AltSoftSerial.html to send data to the mDot via a serial port other than the Hardware Serial
+
+
+   This program,
+    Joins the LoRa Network
+    Waits for motion to be sensed
+    Sends the following fields:
+      - alert: 1/0
+      - count: # of ticks since last reboot
 */
 
 /*--------------------------------------------------------------------------------------
   Includes
   --------------------------------------------------------------------------------------*/
-#include <LoRaAT.h>                              //Include LoRa AT libraray
+#include <AltoviewMDot.h>
+#include <AltSoftSerial.h>
 
 /*--------------------------------------------------------------------------------------
   Definitions
   --------------------------------------------------------------------------------------*/
-LoRaAT mdot;                                     //Instantiate a LoRaAT object
+/* library uses software serial to communicate with the mDot module */
+AltSoftSerial mdotSerial;        // AltSoftSerial only uses ports 8, 9 for RX, TX
+/* library uses hardware serial to print the debuggin information */
+HardwareSerial& debugSerial = Serial;
+
+/* creating an object of a type LoRaAT called mDot */
+AltoviewMDot mdot(&mdotSerial, &debugSerial);
+
 int interruptPin = 2;                                 //attach the OUT pin of the PIR to pin 2 on the Uno
+int count = 0;
+int responseCode;                              //Response code from the mdot
+char msg[15];                                  //cmd = {'a', 'l', 'e', 'r', 't', ':', '#', ',',
+//       'c', 'o', 'u', 'n', 't', ':', '#', '#', '#'}
+unsigned long rise, fall, pulseLength;
+unsigned long pulseAccumulator = 0;
+boolean rising = false;
 
 /*--- setup() --------------------------------------------------------------------------
   Called by the Arduino framework once, before the main loop begins.
@@ -31,41 +51,68 @@ int interruptPin = 2;                                 //attach the OUT pin of th
    - Opens serial communication with MDOT
   --------------------------------------------------------------------------------------*/
 void setup() {
-  pinMode(interruptPin, INPUT); 
+  pinMode(interruptPin, INPUT);
 
-  attachInterrupt(digitalPinToInterrupt(interruptPin), updateCount, RISING);
-  
-  int responseCode;                              //Response of mDot commands
-  mdot.begin();                                  //Opens serial comms with MDOT
+  attachInterrupt(digitalPinToInterrupt(interruptPin), updateCount, CHANGE);
+
+  int responseCode;
+  /* begins a serial communication of a hardware serial */
+  debugSerial.begin(38400);
+  /* begins a serial communication of a software serial */
+  mdotSerial.begin(38400);
+
+  debugSerial.println("\n\nJoining Altoview...\n\n");
+  mdot.begin();
+
   do {
+    /* attempt to join to Altoview */
     responseCode = mdot.join();
-    delay(10000);
+    /* waiting for the join process to finish. */
+    delay(1000);
+    if (responseCode == -1) { 
+      delay(120000);             //undesirable delay due to multiTech joining back off (not allowed to attempt to join to frequently) 
+    }
   } while (responseCode != 0);
+  
+  // send some data to show that Altoview is set up correctly and working
+  sprintf(msg, "count:%d", count);
+  responseCode = mdot.sendPairs(msg);
+  if (responseCode == 0) {
+    debugSerial.println("Success");
+  } else {
+    debugSerial.println("Fail");
+  }
 }
 
 /*--- loop() ---------------------------------------------------------------------------
   Main loop called by the Arduino framework
   --------------------------------------------------------------------------------------*/
-int alert = 0;
-int count = 0; 
-int prevCount = 0; 
 void loop() {
-  //int responseCode;                              //Response code from the mdot
-
-  char msg[15];                                  //cmd = {'a', 'l', 'e', 'r', 't', ':', '#', ',', 
-                                                 //       'c', 'o', 'u', 'n', 't', ':', '#', '#', '#'}
-  if (count != prevCount){ 
-    sprintf(msg,"alert:%d,count:%d",alert,count);
-    mdot.sendPairs(msg); 
-    delay(5000); 
-    prevCount = count; 
-    alert = 0;
+  int accum = pulseAccumulator/1000; 
+  responseCode = -1;
+  sprintf(msg, "count:%d,accum:%d", count, accum);
+  responseCode = mdot.sendPairs(msg);
+  if (responseCode == 0) {
+    count = 0;                //if successfully sent, reset the count to 0 to record the number of triggers since last packet sent.
+    pulseAccumulator = 0;
   }
-  delay(1000);
+  delay(30000);               //delay for 30 seconds
 }
 
-void updateCount(){
-  alert = 1; 
-  ++count; 
+void updateCount() {
+  if (digitalRead(interruptPin)) {
+    rising = true;
+    rise = millis();
+  } else {
+    if (rising) {                         //only execute this if we have had a rising edge previously (set to false initially) 
+      fall = millis();
+      pulseLength = fall - rise;          //the time between the rising and falling edge of the trigger
+      pulseAccumulator += pulseLength;    //the total time active
+      ++count;
+      debugSerial.println(count);
+      debugSerial.println(pulseLength);
+    }
+    rising = false;
+  }
 }
 

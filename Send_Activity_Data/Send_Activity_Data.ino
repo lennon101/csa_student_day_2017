@@ -14,8 +14,8 @@
     Joins the LoRa Network
     Waits for motion to be sensed
     Sends the following fields:
-      - alert: 1/0
-      - count: # of ticks since last reboot
+      - count: # of ticks in the last 30 seconds or since last successful send 
+      - accum: total pulse length time in the last 30 seconds or since last successful send
 */
 
 /*--------------------------------------------------------------------------------------
